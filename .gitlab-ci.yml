@@ -19,6 +19,7 @@ playwright:
     TESTDINO_CI_RUN_ID: "$CI_PIPELINE_ID"
     USERNAME: "$STOREDEMO_USERNAME"
     PASSWORD: "$STOREDEMO_PASSWORD"
+    NEW_PASSWORD: "$STOREDEMO_NEW_PASSWORD"
   script:
     - npm ci
     - npx playwright install --with-deps

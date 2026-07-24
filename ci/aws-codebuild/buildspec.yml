@@ -49,4 +49,5 @@ phases:
       - export TESTDINO_CI_RUN_ID=$CODEBUILD_RESOLVED_SOURCE_VERSION
       - export USERNAME=$STOREDEMO_USERNAME
       - export PASSWORD=$STOREDEMO_PASSWORD
+      - export NEW_PASSWORD=$STOREDEMO_NEW_PASSWORD
       - npx playwright test --shard=$PW_SHARD/$PW_TOTAL || true

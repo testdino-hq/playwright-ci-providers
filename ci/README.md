@@ -29,5 +29,9 @@ Some providers require their config at a fixed path (they will not run from
 
 - `TESTDINO_TOKEN` — **required**, always store as a secret/masked variable.
 - `TESTDINO_SERVER_URL` — hardcoded to `https://analytics.testdino.com` in each config.
-- `STOREDEMO_USERNAME` / `STOREDEMO_PASSWORD` — optional. Needed only for the
-  `@ui` tests (login/cart/orders/updateUser). The `@api` tests pass without them.
+- `STOREDEMO_USERNAME` / `STOREDEMO_PASSWORD` / `STOREDEMO_NEW_PASSWORD` — optional.
+  Needed only for the `@ui` tests (login/cart/orders). The `@api` tests pass without them.
+
+Non-secret values the UI tests need (profile + address like city/state/zip) are
+committed in `../.env.ci` and loaded by `playwright.config.js`, so each provider
+only has to supply the three secrets above.

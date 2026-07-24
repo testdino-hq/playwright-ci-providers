@@ -16,6 +16,7 @@ pipeline {
         TESTDINO_TOKEN = credentials('TESTDINO_TOKEN')
         USERNAME       = credentials('STOREDEMO_USERNAME')
         PASSWORD       = credentials('STOREDEMO_PASSWORD')
+        NEW_PASSWORD   = credentials('STOREDEMO_NEW_PASSWORD')
     }
 
     options {

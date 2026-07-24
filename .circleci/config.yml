@@ -30,6 +30,7 @@ jobs:
             export TESTDINO_CI_RUN_ID="$CIRCLE_WORKFLOW_ID"
             export USERNAME="$STOREDEMO_USERNAME"
             export PASSWORD="$STOREDEMO_PASSWORD"
+            export NEW_PASSWORD="$STOREDEMO_NEW_PASSWORD"
             # CircleCI provides 0-based CIRCLE_NODE_INDEX; Playwright shards are 1-based
             npx playwright test --shard=$((CIRCLE_NODE_INDEX + 1))/$CIRCLE_NODE_TOTAL || true
 

@@ -2,7 +2,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
-// Load environment variables from .env (see .env.example)
+// Non-secret defaults (committed), then local .env overrides. Neither overrides
+// values already in the environment (CI secrets always win).
+dotenv.config({ path: '.env.ci' });
 dotenv.config();
 
 const isCI = !!process.env.CI;

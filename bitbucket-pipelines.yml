@@ -28,6 +28,7 @@ definitions:
           - export TESTDINO_CI_RUN_ID=$BITBUCKET_BUILD_NUMBER
           - export USERNAME=$STOREDEMO_USERNAME
           - export PASSWORD=$STOREDEMO_PASSWORD
+          - export NEW_PASSWORD=$STOREDEMO_NEW_PASSWORD
           - npm ci
           - npx playwright install --with-deps
           - npx playwright test --shard=$SHARD/$TOTAL || true

@@ -24,4 +24,4 @@ playwright:
     - npm ci
     - npx playwright install --with-deps
     # GitLab provides 1-based CI_NODE_INDEX and CI_NODE_TOTAL
-    - npx playwright test --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL || true
+    - npx playwright test --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL

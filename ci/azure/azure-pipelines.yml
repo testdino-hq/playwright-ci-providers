@@ -41,7 +41,7 @@ jobs:
       - script: npx playwright install --with-deps
         displayName: Install Playwright browsers
 
-      - script: npx playwright test --shard=$(System.JobPositionInPhase)/$(System.TotalJobsInPhase) || true
+      - script: npx playwright test --shard=$(System.JobPositionInPhase)/$(System.TotalJobsInPhase)
         displayName: Run Playwright tests (stream to TestDino)
         env:
           TESTDINO_TOKEN: $(TESTDINO_TOKEN)

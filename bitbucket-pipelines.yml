@@ -31,7 +31,7 @@ definitions:
           - export NEW_PASSWORD=$STOREDEMO_NEW_PASSWORD
           - npm ci
           - npx playwright install --with-deps
-          - npx playwright test --shard=$SHARD/$TOTAL || true
+          - npx playwright test --shard=$SHARD/$TOTAL
 
 pipelines:
   default: &sharded-pipeline

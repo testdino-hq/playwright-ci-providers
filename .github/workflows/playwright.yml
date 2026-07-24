@@ -44,4 +44,4 @@ jobs:
           USERNAME: ${{ secrets.STOREDEMO_USERNAME }}
           PASSWORD: ${{ secrets.STOREDEMO_PASSWORD }}
           NEW_PASSWORD: ${{ secrets.STOREDEMO_NEW_PASSWORD }}
-        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} || true
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}

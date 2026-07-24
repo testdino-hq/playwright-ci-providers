@@ -1,0 +1,52 @@
+# Azure DevOps Pipelines — sharded Playwright run streaming live to TestDino.
+# Docs: https://docs.testdino.com/guides/playwright-azure-devops-pipeline
+#
+# This file lives under ci/ for organization. Point your pipeline at it via
+# "Existing Azure Pipelines YAML file" and select /ci/azure/azure-pipelines.yml.
+#
+# Set these pipeline variables (Pipelines -> Library / pipeline variables),
+# secret where noted:
+#   TESTDINO_TOKEN         your TestDino token (secret)
+#   STOREDEMO_USERNAME     storedemo login (optional, for @ui tests)
+#   STOREDEMO_PASSWORD     storedemo password (optional, secret)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: test
+    displayName: Playwright shard
+    timeoutInMinutes: 60
+    strategy:
+      parallel: 4
+    steps:
+      - task: NodeTool@0
+        displayName: Setup Node.js 20
+        inputs:
+          versionSpec: '20'
+
+      - script: npm ci
+        displayName: Install dependencies
+
+      - script: npx playwright install --with-deps
+        displayName: Install Playwright browsers
+
+      - script: npx playwright test --shard=$(System.JobPositionInPhase)/$(System.TotalJobsInPhase) || true
+        displayName: Run Playwright tests (stream to TestDino)
+        env:
+          TESTDINO_TOKEN: $(TESTDINO_TOKEN)
+          TESTDINO_SERVER_URL: https://analytics.testdino.com
+          # Same ciRunId across all shards -> one logical run in TestDino
+          TESTDINO_CI_RUN_ID: $(Build.BuildId)
+          USERNAME: $(STOREDEMO_USERNAME)
+          PASSWORD: $(STOREDEMO_PASSWORD)

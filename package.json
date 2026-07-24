@@ -1,0 +1,22 @@
+{
+  "name": "playwright-ci-providers",
+  "version": "1.0.0",
+  "description": "Playwright tests against storedemo.testdino.com, wired to stream live to TestDino across every documented CI provider.",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:api": "npx playwright test --project=api",
+    "report": "npx playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.1.0"
+  },
+  "dependencies": {
+    "@testdino/playwright": "^2.0.2",
+    "dotenv": "^17.2.1",
+    "playwright": "^1.55.0"
+  },
+  "overrides": {
+    "chalk": "^4.1.2"
+  }
+}

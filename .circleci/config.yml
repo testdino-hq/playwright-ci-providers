@@ -1,0 +1,39 @@
+# CircleCI — sharded Playwright run streaming live to TestDino (CLI / streaming).
+# Docs: https://docs.testdino.com/guides/playwright-circle-ci-cli
+#
+# The upload-mode Orb variant is kept for reference at ci/circleci/config-orb.yml.
+#
+# Set these Project environment variables (Project Settings -> Environment
+# Variables):
+#   TESTDINO_TOKEN         your TestDino token
+#   STOREDEMO_USERNAME     storedemo login (optional, for @ui tests)
+#   STOREDEMO_PASSWORD     storedemo password (optional, for @ui tests)
+
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: mcr.microsoft.com/playwright:v1.54.1-jammy
+    parallelism: 4
+    environment:
+      TESTDINO_SERVER_URL: https://analytics.testdino.com
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Run shard (stream to TestDino)
+          command: |
+            # Same ciRunId across all parallel containers -> one logical run
+            export TESTDINO_CI_RUN_ID="$CIRCLE_WORKFLOW_ID"
+            export USERNAME="$STOREDEMO_USERNAME"
+            export PASSWORD="$STOREDEMO_PASSWORD"
+            # CircleCI provides 0-based CIRCLE_NODE_INDEX; Playwright shards are 1-based
+            npx playwright test --shard=$((CIRCLE_NODE_INDEX + 1))/$CIRCLE_NODE_TOTAL || true
+
+workflows:
+  test:
+    jobs:
+      - test

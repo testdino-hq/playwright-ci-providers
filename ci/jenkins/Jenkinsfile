@@ -1,0 +1,56 @@
+// Jenkins — sharded Playwright run streaming live to TestDino.
+// Docs: https://docs.testdino.com/guides/playwright-jenkins
+//
+// Point the Jenkins Pipeline job's "Script Path" at ci/jenkins/Jenkinsfile.
+// Requires a modern Jenkins (declarative matrix) and the Docker Pipeline plugin.
+//
+// Credentials (Manage Jenkins -> Credentials), as "Secret text":
+//   TESTDINO_TOKEN         your TestDino token
+//   STOREDEMO_USERNAME     storedemo login (optional, for @ui tests)
+//   STOREDEMO_PASSWORD     storedemo password (optional, for @ui tests)
+
+pipeline {
+    agent none
+
+    environment {
+        TESTDINO_TOKEN = credentials('TESTDINO_TOKEN')
+        USERNAME       = credentials('STOREDEMO_USERNAME')
+        PASSWORD       = credentials('STOREDEMO_PASSWORD')
+    }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Shard tests') {
+            matrix {
+                axes {
+                    axis {
+                        name 'SHARD'
+                        values '1', '2', '3', '4'
+                    }
+                }
+                agent {
+                    docker {
+                        image 'mcr.microsoft.com/playwright:v1.54.1-jammy'
+                        args '--ipc=host'
+                    }
+                }
+                environment {
+                    TESTDINO_SERVER_URL = 'https://analytics.testdino.com'
+                    // Same ciRunId across all shards -> one logical run in TestDino
+                    TESTDINO_CI_RUN_ID = "${env.BUILD_TAG}"
+                }
+                stages {
+                    stage('Run shard') {
+                        steps {
+                            sh 'npm ci'
+                            sh "npx playwright test --shard=${SHARD}/4 || true"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

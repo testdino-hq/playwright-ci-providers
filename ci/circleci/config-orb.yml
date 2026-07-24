@@ -1,0 +1,36 @@
+# CircleCI — TestDino Orb variant (UPLOAD mode). REFERENCE ONLY.
+# Docs: https://docs.testdino.com/guides/playwright-circle-ci-orb
+#
+# ⚠️ Different paradigm from the rest of this repo. The Orb uploads the report
+# AFTER the run (testdino/upload-report) instead of streaming live, and does not
+# shard. This repo standardizes on streaming (see .circleci/config.yml, the CLI
+# variant). This file is kept only for parity with the documented Orb approach.
+#
+# To use it, replace .circleci/config.yml with this content and set the
+# TESTDINO_TOKEN project environment variable.
+
+version: '2.1'
+
+orbs:
+  testdino: testdino/testdino@1.0.0
+
+jobs:
+  run-tests:
+    docker:
+      - image: mcr.microsoft.com/playwright:v1.54.1-jammy
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Run Playwright tests
+          command: npx playwright test || true
+      - testdino/upload-report:
+          report_directory: ./playwright-report
+          token: TESTDINO_TOKEN
+
+workflows:
+  test-and-upload:
+    jobs:
+      - run-tests

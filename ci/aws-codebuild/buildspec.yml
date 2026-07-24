@@ -1,0 +1,52 @@
+version: 0.2
+
+# AWS CodeBuild — sharded Playwright run streaming live to TestDino.
+# Docs: https://docs.testdino.com/guides/playwright-amazon-codebuild
+#
+# Point the CodeBuild project's buildspec at ci/aws-codebuild/buildspec.yml.
+#
+# PREREQUISITES:
+#   1. Enable "Batch build" on the CodeBuild project (build-list fans out into
+#      4 parallel shard builds).
+#   2. Project env vars: TESTDINO_TOKEN (and STOREDEMO_USERNAME / STOREDEMO_PASSWORD
+#      for @ui tests). Prefer Secrets Manager / SSM for the token.
+#
+# NOTE: CodeBuild batch exposes no batch-unique id across child builds, so all
+# shards key ciRunId on the resolved commit sha. Caveat: re-running the batch on
+# the exact same commit groups into the same TestDino run.
+
+batch:
+  fast-fail: false
+  build-list:
+    - identifier: shard1
+      env:
+        variables: { PW_SHARD: "1", PW_TOTAL: "4" }
+    - identifier: shard2
+      env:
+        variables: { PW_SHARD: "2", PW_TOTAL: "4" }
+    - identifier: shard3
+      env:
+        variables: { PW_SHARD: "3", PW_TOTAL: "4" }
+    - identifier: shard4
+      env:
+        variables: { PW_SHARD: "4", PW_TOTAL: "4" }
+
+env:
+  variables:
+    NODE_ENV: test
+    TESTDINO_SERVER_URL: https://analytics.testdino.com
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm ci
+      - npx playwright install --with-deps
+
+  build:
+    commands:
+      - export TESTDINO_CI_RUN_ID=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - export USERNAME=$STOREDEMO_USERNAME
+      - export PASSWORD=$STOREDEMO_PASSWORD
+      - npx playwright test --shard=$PW_SHARD/$PW_TOTAL || true

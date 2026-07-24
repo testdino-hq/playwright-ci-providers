@@ -1,0 +1,26 @@
+# GitLab CI/CD — sharded Playwright run streaming live to TestDino.
+# Docs: https://docs.testdino.com/guides/playwright-gitlab-ci-setup
+#
+# Set these CI/CD variables (Settings -> CI/CD -> Variables), masked:
+#   TESTDINO_TOKEN         your TestDino token
+#   STOREDEMO_USERNAME     storedemo login (optional, for @ui tests)
+#   STOREDEMO_PASSWORD     storedemo password (optional, for @ui tests)
+
+stages:
+  - test
+
+playwright:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.54.1-jammy
+  parallel: 4
+  variables:
+    TESTDINO_SERVER_URL: "https://analytics.testdino.com"
+    # Same ciRunId across all parallel shards -> one logical run in TestDino
+    TESTDINO_CI_RUN_ID: "$CI_PIPELINE_ID"
+    USERNAME: "$STOREDEMO_USERNAME"
+    PASSWORD: "$STOREDEMO_PASSWORD"
+  script:
+    - npm ci
+    - npx playwright install --with-deps
+    # GitLab provides 1-based CI_NODE_INDEX and CI_NODE_TOTAL
+    - npx playwright test --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL || true

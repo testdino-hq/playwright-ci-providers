@@ -14,6 +14,23 @@ reporter. Pick your provider, set a token, run.
     credentials; without them they fail but still stream.
 - **Page Object Model** under `pages/`.
 - **8 CI providers**, each sharded 4-way and grouped into one TestDino run.
+- **Intentional mixed results** — `tests/scenario-*.spec.js` deterministically
+  fail on shards 1-2 and pass on 3-4, so every run streams both passing and
+  failing state (errors, traces, videos, screenshots) to exercise the TestDino
+  dashboard. See [Demo scenarios](#demo-scenarios).
+
+## Demo scenarios
+
+`tests/scenario-*.spec.js` are **designed to fail on shards 1 and 2** and pass on
+shards 3 and 4. They are not real bugs — they exist so one sharded CI run shows a
+realistic pass/fail mix on the TestDino dashboard.
+
+How it stays deterministic: Playwright assigns whole files to shards contiguously
+by project order (chromium → shard 1; firefox/webkit/ios → shard 2; api →
+shards 3-4). The scenarios are split into `@chromium` files (land in shard 1) and
+`@firefox` files (land in shard 2), and each is additionally gated on the active
+shard number so it only fails on shards 1-2 (and always passes locally, unsharded).
+To make every shard green, delete `tests/scenario-*.spec.js`.
 
 ## Streaming, not uploading
 

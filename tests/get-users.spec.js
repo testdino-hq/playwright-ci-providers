@@ -125,27 +125,21 @@ test.describe('GET Users API', () => {
   });
 
   test('delayed response (3s) should return 200 ',{tag: '@api'}, async ({ request }) => {
-    // Flaky test: fail on first run, pass on retry
-    const isRetry = test.info().retry > 0;
-    if (!isRetry) {
-      expect(true).toBe(false); // Force failure on first run
-    }
-    
-    // Some APIs support delay parameter for testing
-    const delay = 3;
+    // DummyJSON's `delay` query param is in milliseconds, so 3000ms ≈ 3s of
+    // server-side delay. The endpoint still returns 200 with a valid body.
+    const delayMs = 3000;
     const startTime = Date.now();
-    
-    const response = await request.get(`${API_BASE_URL}${USERS_ENDPOINT}?delay=${delay}`, {
+
+    const response = await request.get(`${API_BASE_URL}${USERS_ENDPOINT}?delay=${delayMs}`, {
       timeout: 10000 // 10 second timeout
     });
-    
-    const endTime = Date.now();
-    const duration = (endTime - startTime) / 1000;
-    
+
+    const duration = (Date.now() - startTime) / 1000;
+
     expect(response.status()).toBe(200);
     // Should take at least close to the delay time
-    expect(duration).toBeGreaterThanOrEqual(delay - 0.5);
-    
+    expect(duration).toBeGreaterThanOrEqual(delayMs / 1000 - 0.5);
+
     const body = await response.json();
     expect(body).toBeInstanceOf(Object);
   });

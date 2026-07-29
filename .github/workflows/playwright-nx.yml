@@ -1,0 +1,54 @@
+name: Playwright Tests (nx)
+
+# Dedicated run that exercises the nx path (`nx e2e`) instead of calling
+# `playwright test` directly. Kept separate from playwright.yml so the proven
+# direct-Playwright workflow stays untouched. Each workflow run has its own
+# github.run_id, so this streams to TestDino as its own logical run — compare it
+# side by side with the direct run.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: nx Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run tests via nx (stream to TestDino)
+        env:
+          TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
+          TESTDINO_SERVER_URL: https://analytics.testdino.com
+          # Same ciRunId across all shards -> one logical run in TestDino
+          TESTDINO_CI_RUN_ID: ${{ github.run_id }}
+          # Storedemo credentials for @ui tests (optional; @api tests need none)
+          USERNAME: ${{ secrets.STOREDEMO_USERNAME }}
+          PASSWORD: ${{ secrets.STOREDEMO_PASSWORD }}
+          NEW_PASSWORD: ${{ secrets.STOREDEMO_NEW_PASSWORD }}
+        # --skip-nx-cache is REQUIRED: the e2e target is cacheable (and Nx Cloud
+        # remote cache is on via nxCloudId). A cache hit replays old output WITHOUT
+        # running Playwright, so that shard never streams -> missing shard in TestDino.
+        run: npx nx e2e --skip-nx-cache -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}

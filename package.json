@@ -5,9 +5,12 @@
   "scripts": {
     "test": "npx playwright test",
     "test:api": "npx playwright test --project=api",
+    "test:nx": "npx nx e2e",
+    "test:nx:api": "npx nx e2e --project=api",
     "report": "npx playwright show-report"
   },
   "devDependencies": {
+    "@nx/playwright": "^23.1.0",
     "@playwright/test": "^1.54.1",
     "@types/node": "^24.1.0",
     "nx": "23.1.0"

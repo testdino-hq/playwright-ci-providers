@@ -41,9 +41,11 @@ pipeline:
             spec: {}
           execution:
             steps:
-              # Install ONCE (not per-shard). On the local runner all shards share
-              # one workspace, so 4 concurrent `npm ci` race and blow up node_modules.
-              # Browsers go into the shared workspace so every shard reuses them.
+              # Install node_modules ONCE. On the local runner all steps share one
+              # workspace, so 4 concurrent `npm ci` race and blow up node_modules.
+              # Browsers are NOT installed here: the shared-workspace browser path
+              # did not reach the shard containers, so each shard installs its own
+              # into the image's default per-container path instead.
               - step:
                   type: Run
                   name: install deps
@@ -51,32 +53,34 @@ pipeline:
                   spec:
                     image: mcr.microsoft.com/playwright:v1.61.1-jammy
                     shell: Sh
-                    envVariables:
-                      PLAYWRIGHT_BROWSERS_PATH: /harness/.pw-browsers
                     command: |
                       npm ci
-                      npx playwright install
               - step:
                   type: Run
                   name: playwright shard
                   identifier: playwright_shard
-                  # Fan out into 4 parallel shards; tests only, deps already present.
+                  # Fan out into 4 parallel shards.
                   strategy:
                     parallelism: 4
                   spec:
                     image: mcr.microsoft.com/playwright:v1.61.1-jammy
                     shell: Sh
                     envVariables:
-                      PLAYWRIGHT_BROWSERS_PATH: /harness/.pw-browsers
                       TESTDINO_SERVER_URL: "https://analytics.testdino.com"
-                      # Same ciRunId across all shards -> one logical run.
+                      # Same ciRunId across all shards -> should be ONE logical run.
                       TESTDINO_CI_RUN_ID: <+pipeline.sequenceId>
                       TESTDINO_TOKEN: <+secrets.getValue("TESTDINO_TOKEN")>
                       USERNAME: <+secrets.getValue("STOREDEMO_USERNAME")>
                       PASSWORD: <+secrets.getValue("STOREDEMO_PASSWORD")>
                       NEW_PASSWORD: <+secrets.getValue("STOREDEMO_NEW_PASSWORD")>
                     command: |
+                      # Diagnostic: every shard must print the SAME non-empty id,
+                      # otherwise TestDino cannot group the shards into one run.
+                      echo "TESTDINO_CI_RUN_ID=[$TESTDINO_CI_RUN_ID]"
                       # strategy.iteration is 0-based; Playwright shards are 1-based.
                       export SHARD=$((<+strategy.iteration> + 1))
                       export TOTAL=<+strategy.iterations>
+                      # Install browsers into this container's default path (no shared
+                      # dir to depend on). Matches the installed @playwright/test.
+                      npx playwright install
                       npx playwright test --shard=$SHARD/$TOTAL

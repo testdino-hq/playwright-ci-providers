@@ -1,0 +1,54 @@
+# Buildkite — sharded Playwright run streaming live to TestDino.
+# Docs: https://docs.testdino.com/guides/playwright-buildkite
+#
+# Buildkite auto-detects .buildkite/pipeline.yml. In the pipeline's step
+# settings, keep the default command:  buildkite-agent pipeline upload
+#
+# Secrets: create these as cluster secrets (Agents -> Clusters -> your cluster
+# -> Secrets -> New Secret), then the secrets#v2.4.0 plugin below injects them
+# as env vars at runtime (auto-redacted from logs):
+#   TESTDINO_TOKEN         your TestDino token
+#   STOREDEMO_USERNAME     storedemo login (optional, for @ui tests)
+#   STOREDEMO_PASSWORD     storedemo password (optional, for @ui tests)
+#   STOREDEMO_NEW_PASSWORD storedemo new password (optional)
+#
+# Note: Buildkite interpolates the pipeline YAML at UPLOAD time. Runtime
+# variables (BUILDKITE_BUILD_NUMBER, BUILDKITE_PARALLEL_JOB, ...) don't exist
+# yet then, so escape them with $$ to defer resolution to job runtime.
+
+steps:
+  - label: ":playwright: shard %n"
+    # Fan out into 4 shards; each shard is one Buildkite job.
+    parallelism: 4
+    plugins:
+      # Pull cluster secrets and expose them as env vars. Left = env var name
+      # seen by the job, right = the secret Key created in the cluster.
+      - secrets#v2.4.0:
+          variables:
+            TESTDINO_TOKEN: "TESTDINO_TOKEN"
+            USERNAME: "STOREDEMO_USERNAME"
+            PASSWORD: "STOREDEMO_PASSWORD"
+            NEW_PASSWORD: "STOREDEMO_NEW_PASSWORD"
+      # Run inside the official Playwright image; forward the injected secrets
+      # plus the env: block below into the container.
+      - docker#v5.11.0:
+          image: "mcr.microsoft.com/playwright:v1.61.1-jammy"
+          propagate-environment: true
+          environment:
+            - "TESTDINO_TOKEN"
+            - "USERNAME"
+            - "PASSWORD"
+            - "NEW_PASSWORD"
+    env:
+      TESTDINO_SERVER_URL: "https://analytics.testdino.com"
+      # Same ciRunId across all shards -> one logical run in TestDino.
+      # $$ escapes upload-time interpolation so the value resolves at runtime.
+      TESTDINO_CI_RUN_ID: "$$BUILDKITE_BUILD_NUMBER"
+    command:
+      # BUILDKITE_PARALLEL_JOB is 0-based; Playwright shards are 1-based.
+      # $$ keeps these as runtime variables (Buildkite interpolates at upload).
+      - export SHARD=$$(($$BUILDKITE_PARALLEL_JOB + 1))
+      - export TOTAL=$$BUILDKITE_PARALLEL_JOB_COUNT
+      - npm ci
+      - npx playwright install --with-deps
+      - npx playwright test --shard=$$SHARD/$$TOTAL

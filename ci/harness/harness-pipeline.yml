@@ -1,0 +1,67 @@
+# Harness CI — sharded Playwright run streaming live to TestDino.
+# Docs: https://docs.testdino.com/guides/playwright-harness-ci
+#
+# Where this file goes:
+#   - Remote (Git Experience): commit to .harness/<identifier>.yaml at repo root.
+#   - Inline: paste into Pipeline Studio -> YAML view in the Harness UI.
+#
+# Configure these in the Harness UI first (they are referenced by id below):
+#   - A Git connector to clone the repo         -> connectorRef under codebase
+#   - Secrets (Project/Org settings -> Secrets):
+#       testdino_token, storedemo_username, storedemo_password,
+#       storedemo_new_password
+#   - Replace <ORG_ID>, <PROJECT_ID>, <GIT_CONNECTOR_ID> below.
+
+pipeline:
+  name: playwright-ci-providers
+  identifier: playwright_ci_providers
+  projectIdentifier: <PROJECT_ID>
+  orgIdentifier: <ORG_ID>
+  properties:
+    ci:
+      codebase:
+        connectorRef: <GIT_CONNECTOR_ID>
+        repoName: playwright-ci-providers
+        build: <+input>
+  stages:
+    - stage:
+        name: test
+        identifier: test
+        type: CI
+        spec:
+          cloneCodebase: true
+          # Harness Cloud = hosted build infra, no delegate/k8s to manage.
+          # Swap for a Kubernetes/VM infrastructure block if self-hosting.
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: playwright shard
+                  identifier: playwright_shard
+                  # Fan out into 4 parallel shards.
+                  strategy:
+                    parallelism: 4
+                  spec:
+                    image: mcr.microsoft.com/playwright:v1.61.1-jammy
+                    shell: Sh
+                    envVariables:
+                      TESTDINO_SERVER_URL: "https://analytics.testdino.com"
+                      # Same ciRunId across all shards -> one logical run.
+                      TESTDINO_CI_RUN_ID: <+pipeline.sequenceId>
+                      TESTDINO_TOKEN: <+secrets.getValue("testdino_token")>
+                      USERNAME: <+secrets.getValue("storedemo_username")>
+                      PASSWORD: <+secrets.getValue("storedemo_password")>
+                      NEW_PASSWORD: <+secrets.getValue("storedemo_new_password")>
+                    command: |
+                      # strategy.iteration is 0-based; Playwright shards are 1-based.
+                      export SHARD=$((<+strategy.iteration> + 1))
+                      export TOTAL=<+strategy.iterations>
+                      npm ci
+                      npx playwright install --with-deps
+                      npx playwright test --shard=$SHARD/$TOTAL

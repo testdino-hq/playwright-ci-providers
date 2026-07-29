@@ -20,7 +20,7 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: <GIT_CONNECTOR_ID>
+        connectorRef: Github
         repoName: playwright-ci-providers
         build: <+input>
   stages:
@@ -30,38 +30,53 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
-          # Harness Cloud = hosted build infra, no delegate/k8s to manage.
-          # Swap for a Kubernetes/VM infrastructure block if self-hosting.
+          # Self-hosted local runner (no credit card). Builds run in Docker on
+          # your machine via a Harness Delegate + Docker Runner. os/arch here is
+          # the CONTAINER platform: Linux on your arm64 Mac -> Arm64.
           platform:
             os: Linux
-            arch: Amd64
+            arch: Arm64
           runtime:
-            type: Cloud
+            type: Docker
             spec: {}
           execution:
             steps:
+              # Install ONCE (not per-shard). On the local runner all shards share
+              # one workspace, so 4 concurrent `npm ci` race and blow up node_modules.
+              # Browsers go into the shared workspace so every shard reuses them.
+              - step:
+                  type: Run
+                  name: install deps
+                  identifier: install_deps
+                  spec:
+                    image: mcr.microsoft.com/playwright:v1.61.1-jammy
+                    shell: Sh
+                    envVariables:
+                      PLAYWRIGHT_BROWSERS_PATH: /harness/.pw-browsers
+                    command: |
+                      npm ci
+                      npx playwright install
               - step:
                   type: Run
                   name: playwright shard
                   identifier: playwright_shard
-                  # Fan out into 4 parallel shards.
+                  # Fan out into 4 parallel shards; tests only, deps already present.
                   strategy:
                     parallelism: 4
                   spec:
                     image: mcr.microsoft.com/playwright:v1.61.1-jammy
                     shell: Sh
                     envVariables:
+                      PLAYWRIGHT_BROWSERS_PATH: /harness/.pw-browsers
                       TESTDINO_SERVER_URL: "https://analytics.testdino.com"
                       # Same ciRunId across all shards -> one logical run.
                       TESTDINO_CI_RUN_ID: <+pipeline.sequenceId>
-                      TESTDINO_TOKEN: <+secrets.getValue("testdino_token")>
-                      USERNAME: <+secrets.getValue("storedemo_username")>
-                      PASSWORD: <+secrets.getValue("storedemo_password")>
-                      NEW_PASSWORD: <+secrets.getValue("storedemo_new_password")>
+                      TESTDINO_TOKEN: <+secrets.getValue("TESTDINO_TOKEN")>
+                      USERNAME: <+secrets.getValue("STOREDEMO_USERNAME")>
+                      PASSWORD: <+secrets.getValue("STOREDEMO_PASSWORD")>
+                      NEW_PASSWORD: <+secrets.getValue("STOREDEMO_NEW_PASSWORD")>
                     command: |
                       # strategy.iteration is 0-based; Playwright shards are 1-based.
                       export SHARD=$((<+strategy.iteration> + 1))
                       export TOTAL=<+strategy.iterations>
-                      npm ci
-                      npx playwright install --with-deps
                       npx playwright test --shard=$SHARD/$TOTAL

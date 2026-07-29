@@ -38,17 +38,21 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run tests via nx (stream to TestDino)
+      - name: Run tests via nx (stream to TestDino + Nx Cloud)
         env:
           TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
           TESTDINO_SERVER_URL: https://analytics.testdino.com
           # Same ciRunId across all shards -> one logical run in TestDino
           TESTDINO_CI_RUN_ID: ${{ github.run_id }}
+          # Nx Cloud CI auth. Without a CI access token the run is NOT recorded in
+          # the Nx Cloud project (nxCloudId alone authorizes local auth, not CI writes).
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
           # Storedemo credentials for @ui tests (optional; @api tests need none)
           USERNAME: ${{ secrets.STOREDEMO_USERNAME }}
           PASSWORD: ${{ secrets.STOREDEMO_PASSWORD }}
           NEW_PASSWORD: ${{ secrets.STOREDEMO_NEW_PASSWORD }}
-        # --skip-nx-cache is REQUIRED: the e2e target is cacheable (and Nx Cloud
-        # remote cache is on via nxCloudId). A cache hit replays old output WITHOUT
-        # running Playwright, so that shard never streams -> missing shard in TestDino.
-        run: npx nx e2e --skip-nx-cache -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        # NO --skip-nx-cache: keeping the Nx Cloud connection alive is what makes the
+        # run show up in the Nx Cloud project. Shard execution is still guaranteed
+        # because the e2e target is marked non-cacheable in nx.json (targetDefaults),
+        # so Playwright always runs and every shard streams to TestDino.
+        run: npx nx e2e -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}

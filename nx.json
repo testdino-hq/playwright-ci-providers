@@ -2,6 +2,11 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "nxCloudId": "6a69a3495e037c01e6bb2d7e",
   "analytics": false,
+  "targetDefaults": {
+    "e2e": {
+      "cache": false
+    }
+  },
   "plugins": [
     {
       "plugin": "@nx/playwright/plugin",
